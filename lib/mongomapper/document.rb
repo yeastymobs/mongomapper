@@ -173,9 +173,19 @@ module MongoMapper
         end
 
       private
-        def find_every(options)
+        def find_every(options={})
+          if self.keys[:_type] && self.name.constantize.superclass != Object
+            if options[:conditions]
+              options[:conditions].merge!({:_type => self.name})
+            else
+              options[:conditions] = {:_type => self.name}
+            end
+          end
+          
           criteria, options = FinderOptions.new(options).to_a
-          collection.find(criteria, options).to_a.map { |doc| new(doc) }
+          collection.find(criteria, options).to_a.map do |doc| 
+            doc["_type"] ? doc["_type"].constantize.new(doc) : new(doc)
+          end
         end
 
         def find_first(options)
