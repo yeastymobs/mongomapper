@@ -14,7 +14,11 @@ module MongoMapper
                                 {'$in' => value}
                               end
           when Hash
-            criteria[field] = to_mongo_criteria(value, field)
+            if field == "$where"
+              criteria[field] = value
+            else
+              criteria[field] = to_mongo_criteria(value, field)
+            end
           else            
             criteria[field] = value
         end
