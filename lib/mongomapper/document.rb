@@ -58,13 +58,16 @@ module MongoMapper
       end
 
       def find_by_id(id)
-        criteria = FinderOptions.to_mongo_criteria(:_id => id)
+        conditions = {:_id => id}
+        conditions.merge!(:_type => self.name) if is_child_document?
+        criteria = FinderOptions.to_mongo_criteria(conditions)
         if doc = collection.find_first(criteria)
-          new(doc)
+          doc["_type"] ? doc["_type"].constantize.new(doc) : new(doc)
         end
       end
 
       def count(conditions={})
+        conditions.merge!({:_type => self.name}) if is_child_document?
         collection.count(FinderOptions.to_mongo_criteria(conditions))
       end
 
@@ -173,9 +176,23 @@ module MongoMapper
         end
 
       private
-        def find_every(options)
+        def is_child_document?
+          self.keys[:_type] && self.name != self.collection.name.singularize.capitalize
+        end
+      
+        def find_every(options={})
+          if is_child_document?
+            if options[:conditions]
+              options[:conditions].merge!({:_type => self.name})
+            else
+              options[:conditions] = {:_type => self.name}
+            end
+          end
+          
           criteria, options = FinderOptions.new(options).to_a
-          collection.find(criteria, options).to_a.map { |doc| new(doc) }
+          collection.find(criteria, options).to_a.map do |doc| 
+            doc["_type"] ? doc["_type"].constantize.new(doc) : new(doc)
+          end
         end
 
         def find_first(options)
