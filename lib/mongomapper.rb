@@ -3,7 +3,7 @@ require 'rubygems'
 
 gem 'activesupport'
 gem 'mongodb-mongo', '0.11.1'
-gem 'validatable', '1.7.2'
+gem 'hashrocket-validatable', '1.7.2'
 
 require 'activesupport'
 require 'mongo'
