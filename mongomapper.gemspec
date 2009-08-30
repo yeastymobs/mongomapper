@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{mongomapper}
-  s.version = "0.3.4.1"
+  s.version = "0.3.5"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["John Nunemaker"]
-  s.date = %q{2009-08-27}
+  s.date = %q{2009-08-31}
   s.default_executable = %q{mmconsole}
   s.email = %q{nunemaker@gmail.com}
   s.executables = ["mmconsole"]
@@ -51,7 +51,6 @@ Gem::Specification.new do |s|
      "lib/mongomapper/serializers/json_serializer.rb",
      "lib/mongomapper/support.rb",
      "lib/mongomapper/validations.rb",
-     "mongomapper.gemspec",
      "test/NOTE_ON_TESTING",
      "test/functional/associations/test_belongs_to_polymorphic_proxy.rb",
      "test/functional/associations/test_belongs_to_proxy.rb",
@@ -84,7 +83,7 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{mongomapper}
-  s.rubygems_version = %q{1.3.5}
+  s.rubygems_version = %q{1.3.4}
   s.summary = %q{Awesome gem for modeling your domain and storing it in mongo}
   s.test_files = [
     "test/functional/associations/test_belongs_to_polymorphic_proxy.rb",
@@ -122,20 +121,20 @@ Gem::Specification.new do |s|
     if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<activesupport>, [">= 0"])
       s.add_runtime_dependency(%q<mongodb-mongo>, ["= 0.11.1"])
-      s.add_runtime_dependency(%q<hashrocket-validatable>, [">= 1.7.2.1"])
+      s.add_runtime_dependency(%q<hashrocket-validatable>, [">= 1.7.3"])
       s.add_development_dependency(%q<mocha>, ["= 0.9.4"])
       s.add_development_dependency(%q<jnunemaker-matchy>, ["= 0.4.0"])
     else
       s.add_dependency(%q<activesupport>, [">= 0"])
       s.add_dependency(%q<mongodb-mongo>, ["= 0.11.1"])
-      s.add_dependency(%q<hashrocket-validatable>, [">= 1.7.2.1"])
+      s.add_dependency(%q<hashrocket-validatable>, [">= 1.7.3"])
       s.add_dependency(%q<mocha>, ["= 0.9.4"])
       s.add_dependency(%q<jnunemaker-matchy>, ["= 0.4.0"])
     end
   else
     s.add_dependency(%q<activesupport>, [">= 0"])
     s.add_dependency(%q<mongodb-mongo>, ["= 0.11.1"])
-    s.add_dependency(%q<hashrocket-validatable>, [">= 1.7.2.1"])
+    s.add_dependency(%q<hashrocket-validatable>, [">= 1.7.3"])
     s.add_dependency(%q<mocha>, ["= 0.9.4"])
     s.add_dependency(%q<jnunemaker-matchy>, ["= 0.4.0"])
   end
