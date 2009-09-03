@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{mongomapper}
-  s.version = "0.3.5"
+  s.version = "0.3.6"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["John Nunemaker"]
-  s.date = %q{2009-08-31}
+  s.date = %q{2009-09-03}
   s.default_executable = %q{mmconsole}
   s.email = %q{nunemaker@gmail.com}
   s.executables = ["mmconsole"]
@@ -51,6 +51,7 @@ Gem::Specification.new do |s|
      "lib/mongomapper/serializers/json_serializer.rb",
      "lib/mongomapper/support.rb",
      "lib/mongomapper/validations.rb",
+     "mongomapper.gemspec",
      "test/NOTE_ON_TESTING",
      "test/functional/associations/test_belongs_to_polymorphic_proxy.rb",
      "test/functional/associations/test_belongs_to_proxy.rb",
