@@ -68,7 +68,7 @@ module MongoMapper
 
       def count(conditions={})
         conditions.merge!({:_type => self.name}) if is_child_document?
-        collection.count(FinderOptions.to_mongo_criteria(conditions))
+        collection.find(FinderOptions.to_mongo_criteria(conditions)).count
       end
 
       def create(*docs)
@@ -337,7 +337,7 @@ module MongoMapper
       
       def assign_id
         if read_attribute(:_id).blank?
-          write_attribute(:_id, XGen::Mongo::Driver::ObjectID.new.to_s)
+          write_attribute(:_id, Mongo::ObjectID.new.to_s)
         end
       end
 
