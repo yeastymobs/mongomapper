@@ -10,6 +10,7 @@ class DocumentTest < Test::Unit::TestCase
       key :first_name, String
       key :last_name, String
       key :age, Integer
+      key :date, Date
     end
 
     @document.collection.clear
@@ -150,6 +151,35 @@ class DocumentTest < Test::Unit::TestCase
       end
     end
 
+    context "#new_record? for embedded documents" do
+      setup do
+        @document.class_eval do
+          key :foo, Address
+        end
+      end
+
+      should "be a new_record until document is saved" do
+        address = Address.new(:city => 'South Bend', :state => 'IN')
+        doc = @document.new(:foo => address)
+        address.new_record?.should == true
+      end
+      
+      should "not be a new_record after document is saved" do
+        address = Address.new(:city => 'South Bend', :state => 'IN')
+        doc = @document.new(:foo => address)
+        doc.save
+        address.new_record?.should == false
+      end
+      
+      should "not be a new_record when document is read back" do
+        address = Address.new(:city => 'South Bend', :state => 'IN')
+        doc = @document.new(:foo => address)
+        doc.save
+        read_doc = @document.find(doc.id)
+        read_doc.foo.new_record?.should == false
+      end
+    end
+    
     context "Creating a single document" do
       setup do
         @doc_instance = @document.create({:first_name => 'John', :last_name => 'Nunemaker', :age => '27'})
@@ -772,6 +802,33 @@ class DocumentTest < Test::Unit::TestCase
       person.save
       from_db = RealPerson.find(person.id)
       from_db.name.should == "David"
+    end
+    
+    context "Saving documents with Date key set" do
+      setup do
+        @doc = @document.new(:first_name => 'John', :age => '27', :date => "12/01/2009")
+      end
+    
+      should "save the Date value as a Time object" do
+        @doc.save
+        @doc.date.should == Date.new(2009, 12, 1)
+      end
+    end
+
+    context "Saving an embedded document with Date key set" do
+      setup do
+        Pet.class_eval do
+          key :date_of_birth, Date
+        end
+        @doc = RealPerson.new
+      end
+
+      should "save the Date value as a Time object" do
+        @doc.pets = [Pet.new(:date_of_birth => "12/01/2009")]
+        @doc.save
+        doc = RealPerson.find @doc.id
+        doc.pets.last.date_of_birth.should == Date.new(2009, 12, 1)
+      end
     end
   end
 

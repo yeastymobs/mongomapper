@@ -2,8 +2,8 @@ require 'pathname'
 require 'rubygems'
 
 gem 'activesupport'
-gem 'mongodb-mongo', '0.14'
-gem 'jnunemaker-validatable', '1.7.2'
+gem 'mongodb-mongo', '0.11.1'
+gem 'hashrocket-validatable', '>= 1.7.3'
 
 # require 'activesupport'
 require 'mongo'

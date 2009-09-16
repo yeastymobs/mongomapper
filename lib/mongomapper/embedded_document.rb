@@ -13,8 +13,11 @@ module MongoMapper
         include RailsCompatibility::EmbeddedDocument
         include Validatable
         include Serialization
-        
+
+        extend Validations::Macros
+
         key :_id, String
+        attr_accessor :_parent_document
       end
     end
 
@@ -41,15 +44,15 @@ module MongoMapper
 
       def key(*args)
         key = Key.new(*args)
-        
+
         if keys[key.name].blank?
           keys[key.name] = key
-          
+
           create_accessors_for(key)
           add_to_subclasses(*args)
           apply_validations_for(key)
           create_indexes_for(key)
-          
+
           key
         end
       end
@@ -86,7 +89,7 @@ module MongoMapper
       def accessors_module
         if const_defined?('MongoMapperKeys')
           const_get 'MongoMapperKeys'
-        else 
+        else
           const_set 'MongoMapperKeys', Module.new
         end
       end
@@ -111,7 +114,7 @@ module MongoMapper
         end_eval
         include accessors_module
       end
-      
+
       def create_indexes_for(key)
         ensure_index key.name if key.options[:index]
       end
@@ -155,6 +158,12 @@ module MongoMapper
         unless attrs.nil?
           self.class.associations.each_pair do |name, association|
             if collection = attrs.delete(name)
+              if association.many? && association.klass.embeddable?
+                parent_document = attrs[:_parent_document] || self
+                collection.each do |doc|
+                  doc[:_parent_document] = parent_document
+                end
+              end
               send("#{association.name}=", collection)
             end
           end
@@ -166,16 +175,23 @@ module MongoMapper
           end
         end
 
-        if self.class.embeddable? && read_attribute(:_id).blank?
-          write_attribute :_id, Mongo::ObjectID.new.to_s
+        if self.class.embeddable? 
+          if read_attribute(:_id).blank?
+            write_attribute :_id, XGen::Mongo::Driver::ObjectID.new.to_s
+            @new_record = true
+          end
         end
+      end
+      
+      def new_record?
+        !!@new_record
       end
 
       def attributes=(attrs)
         return if attrs.blank?
         attrs.each_pair do |name, value|
           writer_method = "#{name}="
-          
+
           if respond_to?(writer_method)
             self.send(writer_method, value)
           else
@@ -187,7 +203,7 @@ module MongoMapper
       def attributes
         attrs = HashWithIndifferentAccess.new
         self.class.keys.each_pair do |name, key|
-          value = 
+          value =
             if key.native?
               read_attribute(key.name)
             else
@@ -195,7 +211,7 @@ module MongoMapper
                 embedded_document.attributes
               end
             end
-          
+
           attrs[name] = value unless value.nil?
         end
         attrs.merge!(embedded_association_attributes)
@@ -222,19 +238,42 @@ module MongoMapper
         @using_custom_id = true
         write_attribute :_id, value
       end
-      
+
       def using_custom_id?
         !!@using_custom_id
       end
 
       def inspect
         attributes_as_nice_string = self.class.keys.keys.collect do |name|
-          "#{name}: #{read_attribute(name)}"
+          "#{name}: #{read_attribute(name).inspect}"
         end.join(", ")
         "#<#{self.class} #{attributes_as_nice_string}>"
       end
 
       private
+      
+        def mongodb_attributes
+          attrs = HashWithIndifferentAccess.new
+          self.class.keys.each_pair do |name, key|
+            value = 
+              if key.native?
+                if key.type == Date and date = instance_variable_get("@#{key.name}")
+                  key.normalize_date(date)
+                else
+                  read_attribute(key.name)
+                end
+              else
+                if embedded_document = read_attribute(key.name)
+                  embedded_document.send :mongodb_attributes
+                end
+              end
+          
+            attrs[name] = value unless value.nil?
+          end
+          @new_record = false
+          attrs.merge!(embedded_association_attributes)
+        end
+      
         def ensure_key_exists(name)
           self.class.key(name) unless respond_to?("#{name}=")
         end
@@ -260,7 +299,7 @@ module MongoMapper
               next unless association.embeddable?
               next unless documents = instance_variable_get(association.ivar)
 
-              attrs[name] = documents.collect { |doc| doc.attributes }
+              attrs[name] = documents.collect { |doc| doc.send(:mongodb_attributes) }
             end
           end
         end
