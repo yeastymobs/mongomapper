@@ -66,7 +66,7 @@ module MongoMapper
       end
 
       def count(conditions={})
-        collection.count(FinderOptions.to_mongo_criteria(conditions))
+        collection.find(FinderOptions.to_mongo_criteria(conditions)).count
       end
 
       def create(*docs)
