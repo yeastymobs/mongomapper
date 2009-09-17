@@ -18,11 +18,11 @@ class DocumentTest < Test::Unit::TestCase
     end
 
     should "have a connection" do
-      @document.connection.should be_instance_of(XGen::Mongo::Driver::Mongo)
+      @document.connection.should be_instance_of(XGen::Mongo::Driver::Connection)
     end
 
     should "allow setting different connection without affecting the default" do
-      conn = XGen::Mongo::Driver::Mongo.new
+      conn = XGen::Mongo::Driver::Connection.new
       @document.connection conn
       @document.connection.should == conn
       @document.connection.should_not == MongoMapper.connection

@@ -48,7 +48,7 @@ module MongoMapper
   end
   
   def self.connection
-    @@connection ||= XGen::Mongo::Driver::Mongo.new
+    @@connection ||= XGen::Mongo::Driver::Connection.new
   end
 
   def self.connection=(new_connection)

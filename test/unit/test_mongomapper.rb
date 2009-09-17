@@ -4,14 +4,14 @@ class Address; end
 
 class MongoMapperTest < Test::Unit::TestCase  
   should "be able to write and read connection" do
-    conn = XGen::Mongo::Driver::Mongo.new
+    conn = XGen::Mongo::Driver::Connection.new
     MongoMapper.connection = conn
     MongoMapper.connection.should == conn
   end
   
   should "default connection to new mongo ruby driver" do
     MongoMapper.connection = nil
-    MongoMapper.connection.should be_instance_of(XGen::Mongo::Driver::Mongo)
+    MongoMapper.connection.should be_instance_of(XGen::Mongo::Driver::Connection)
   end
   
   should "be able to write and read default database" do
