@@ -60,7 +60,7 @@ module MongoMapper
 
       def find_by_id(id)
         criteria = FinderOptions.to_mongo_criteria(:_id => id)
-        if doc = collection.find_first(criteria)
+        if doc = collection.find_one(criteria)
           new(doc)
         end
       end
