@@ -62,7 +62,7 @@ module MongoMapper
         conditions = {:_id => id}
         conditions.merge!(:_type => self.name) if is_child_document?
         criteria = FinderOptions.to_mongo_criteria(conditions)
-        if doc = collection.find_first(criteria)
+        if doc = collection.find_one(criteria)
           doc["_type"] ? doc["_type"].constantize.new(doc) : new(doc)
         end
       end
