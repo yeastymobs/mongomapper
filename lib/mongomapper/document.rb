@@ -149,6 +149,10 @@ module MongoMapper
         class_eval { before_save :update_timestamps }
       end
       
+      def is_child_document?
+        self.keys[:_type] && self.name != self.collection.name.camelcase.singularize
+      end
+      
       protected
         def method_missing(method, *args)
           finder = DynamicFinder.new(self, method)
@@ -165,10 +169,6 @@ module MongoMapper
         end
 
       private
-        def is_child_document?
-          self.keys[:_type] && self.name != self.collection.name.singularize.capitalize
-        end
-      
         def find_every(options={})
           if is_child_document?
             if options[:conditions]

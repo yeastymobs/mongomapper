@@ -72,6 +72,18 @@ class DocumentTest < Test::Unit::TestCase
     should "track subclasses" do
       Message.subclasses.should == [Enter, Exit, Chat]
     end
+    
+    context "is_child_document?" do
+      should "be false if document is a parent document" do
+        Message.is_child_document?.should be(false)
+      end
+      
+      should "be true if document is a child document" do
+        Enter.is_child_document?.should be(true)
+        Exit.is_child_document?.should be(true)
+        Chat.is_child_document?.should be(true)
+      end
+    end
   end
 
   context "An instance of a document" do
