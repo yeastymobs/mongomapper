@@ -4,7 +4,7 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "mongomapper"
+    gem.name = "mongo_mapper"
     gem.summary = %Q{Awesome gem for modeling your domain and storing it in mongo}
     gem.email = "nunemaker@gmail.com"
     gem.homepage = "http://github.com/jnunemaker/mongomapper"
@@ -12,8 +12,8 @@ begin
     gem.rubyforge_project = "mongomapper"
     
     gem.add_dependency('activesupport')
-    gem.add_dependency('mongodb-mongo', '0.14.1')
-    gem.add_dependency('hashrocket-validatable', '>= 1.7.3')
+    gem.add_dependency('mongo', '0.15')
+    gem.add_dependency('jnunemaker-validatable', '1.7.3')
     
     gem.add_development_dependency('mocha', '0.9.4')
     gem.add_development_dependency('jnunemaker-matchy', '0.4.0')
@@ -31,6 +31,20 @@ Rake::TestTask.new(:test) do |test|
   test.libs << 'lib' << 'test'
   test.pattern = 'test/**/test_*.rb'
   test.verbose = true
+end
+
+namespace :test do
+  Rake::TestTask.new(:units) do |test|
+    test.libs << 'lib' << 'test'
+    test.pattern = 'test/unit/**/test_*.rb'
+    test.verbose = true
+  end
+  
+  Rake::TestTask.new(:functionals) do |test|
+    test.libs << 'lib' << 'test'
+    test.pattern = 'test/functional/**/test_*.rb'
+    test.verbose = true
+  end
 end
 
 begin

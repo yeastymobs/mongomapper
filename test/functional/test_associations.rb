@@ -1,17 +1,14 @@
 require 'test_helper'
 require 'models'
 
-class AssociationsTest < Test::Unit::TestCase
-  def setup
-    clear_all_collections
-  end
-    
+class AssociationsTest < Test::Unit::TestCase    
   should "allow changing class names" do
     class AwesomeUser
       include MongoMapper::Document
       
       many :posts, :class_name => 'AssociationsTest::AwesomePost', :foreign_key => :creator_id
     end
+    AwesomeUser.collection.clear
     
     class AwesomeTag
       include MongoMapper::EmbeddedDocument

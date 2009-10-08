@@ -32,8 +32,8 @@ class OtherChild < Parent
   key :other_child, String
 end
 
-class EmbeddedDocumentTest < Test::Unit::TestCase
-  context "Including MongoMapper::EmbeddedDocument" do
+class EmbeddedDocumentTest < Test::Unit::TestCase 
+  context "Including MongoMapper::EmbeddedDocument in a class" do
     setup do
       @klass = Class.new do
         include MongoMapper::EmbeddedDocument
@@ -42,6 +42,36 @@ class EmbeddedDocumentTest < Test::Unit::TestCase
 
     should "add _id key" do
       @klass.keys['_id'].should_not be_nil
+    end
+    
+    context "#to_mongo" do
+      should "be nil if nil" do
+        @klass.to_mongo(nil).should be_nil
+      end
+      
+      should "convert to_mongo for other values" do
+        doc = @klass.new(:foo => 'bar')
+        to_mongo = @klass.to_mongo(doc)
+        to_mongo.is_a?(Hash).should be_true
+        to_mongo['foo'].should == 'bar'
+      end
+    end
+    
+    context "#from_mongo" do
+      should "be nil if nil" do
+        @klass.from_mongo(nil).should be_nil
+      end
+      
+      should "be instance if instance of class" do
+        doc = @klass.new
+        @klass.from_mongo(doc).should == doc
+      end
+      
+      should "be instance if hash of attributes" do
+        doc = @klass.from_mongo({:foo => 'bar'})
+        doc.instance_of?(@klass).should be_true
+        doc.foo.should == 'bar'
+      end
     end
   end
 
@@ -185,7 +215,7 @@ class EmbeddedDocumentTest < Test::Unit::TestCase
       doc.inspect.should include(%(animals: ["dog", "cat"]))
     end
   end
-
+  
   context "subclasses" do
     should "default to nil" do
       Child.subclasses.should be_nil
@@ -263,8 +293,8 @@ class EmbeddedDocumentTest < Test::Unit::TestCase
       doc.id.should == doc._id.to_s
     end
 
-    should "have a nil _parent_document" do
-      @document.new._parent_document.should be_nil
+    should "have a nil _root_document" do
+      @document.new._root_document.should be_nil
     end
 
     context "setting custom id" do
@@ -295,13 +325,13 @@ class EmbeddedDocumentTest < Test::Unit::TestCase
         doc.skills.should == ['ruby', 'rails']
       end
 
-      should "set the parent id on embedded documents" do
+      should "set the root on embedded documents" do
         document = Class.new(@document) do
           many :children
         end
 
-        doc = document.new :_parent_document => 'document', 'children' => [{}]
-        doc.children.first._parent_document.should == 'document'
+        doc = document.new :_root_document => 'document', 'children' => [{}]
+        doc.children.first._root_document.should == 'document'
       end
 
       should "not throw error if initialized with nil" do
@@ -368,25 +398,55 @@ class EmbeddedDocumentTest < Test::Unit::TestCase
     end
 
     context "attributes" do
-      should "default to hash with _id" do
+      should "default to hash with all keys" do
         doc = @document.new
-        doc.attributes.keys.should == ['_id']
+        doc.attributes.keys.sort.should == ['_id', 'age', 'name']
       end
 
-      should "return all keys that aren't nil" do
+      should "return all keys with values" do
         doc = @document.new(:name => 'string', :age => nil)
-        doc.attributes.keys.sort.should == ['_id', 'name']
+        doc.attributes.keys.sort.should == ['_id', 'age', 'name']
         doc.attributes.values.should include('string')
+        doc.attributes.values.should include(nil)
       end
     end
+    
+    context "to_mongo" do
+      should "default to hash with _id key" do
+        doc = @document.new
+        doc.to_mongo.keys.should == ['_id']
+      end
+      
+      should "return all keys with non nil values" do
+        doc = @document.new(:name => 'string', :age => nil)
+        doc.to_mongo.keys.sort.should == ['_id', 'name']
+        doc.to_mongo.values.should include('string')
+        doc.to_mongo.values.should_not include(nil)
+      end
+    end
+    
+    should "convert dates into times" do
+      document = Class.new(@document) do
+        key :start_date, Date
+      end
+      doc = document.new :start_date => "12/05/2009"
+      doc.start_date.should == Date.new(2009, 12, 05)
+    end
 
-    context "mongodb_attributes" do
-      should "convert dates into times" do
-        document = Class.new(@document) do
-          key :start_date, Date
-        end
-        doc = document.new :start_date => "12/05/2009"
-        doc.send(:mongodb_attributes)['start_date'].should == Date.new(2009, 12, 05)
+    context "clone" do
+      should "regenerate the id" do
+        doc = @document.new(:name => "foo", :age => 27)
+        doc_id = doc.id
+        clone = doc.clone
+        clone_id = clone.id
+        clone_id.should_not == doc_id
+      end
+
+      should "copy the attributes" do
+        doc = @document.new(:name => "foo", :age => 27)
+        clone = doc.clone
+        clone.name.should == "foo"
+        clone.age.should == 27
       end
     end
 

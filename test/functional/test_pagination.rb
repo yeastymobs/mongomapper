@@ -5,13 +5,14 @@ class PaginationTest < Test::Unit::TestCase
     setup do
       @document = Class.new do
         include MongoMapper::Document
-        collection 'users'
+        set_collection_name 'users'
 
         key :first_name, String
         key :last_name, String
         key :age, Integer
+        
+        def self.per_page; 1 end
       end
-
       @document.collection.clear
       
       @doc1 = @document.create({:first_name => 'John', :last_name => 'Nunemaker', :age => '27'})
@@ -23,7 +24,12 @@ class PaginationTest < Test::Unit::TestCase
       result = @document.paginate(:per_page => 2, :page => 1)
       result.total_pages.should == 2
     end
-
+    
+    should "return the total pages when defaulting to the document class per_page" do
+      result = @document.paginate(:page => 1)
+      result.total_pages.should == 3
+    end
+    
     should "return the total of records" do
       result = @document.paginate(:per_page => 2, :page => 1)
       result.total_entries.should == 3

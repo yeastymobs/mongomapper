@@ -40,6 +40,12 @@ class FinderOptionsTest < Test::Unit::TestCase
       }
     end
     
+    should "convert id to _id" do
+      FinderOptions.to_mongo_criteria(:id => '1').should == {
+        :_id => '1'
+      }
+    end
+    
     should "use $in for arrays" do
       FinderOptions.to_mongo_criteria(:foo => [1,2,3]).should == {
         :foo => {'$in' => [1,2,3]}
@@ -127,17 +133,21 @@ class FinderOptionsTest < Test::Unit::TestCase
     end
   end
   
-  context "offset" do
+  context "skip" do
     should "default to 0" do
-      FinderOptions.to_mongo_options({})[:offset].should == 0
+      FinderOptions.to_mongo_options({})[:skip].should == 0
     end
     
-    should "use offset provided" do
-      FinderOptions.to_mongo_options(:offset => 2)[:offset].should == 2
+    should "use skip provided" do
+      FinderOptions.to_mongo_options(:skip => 2)[:skip].should == 2
     end
     
     should "covert string to integer" do
-      FinderOptions.to_mongo_options(:offset => '2')[:offset].should == 2
+      FinderOptions.to_mongo_options(:skip => '2')[:skip].should == 2
+    end
+    
+    should "convert offset to skip" do
+      FinderOptions.to_mongo_options(:offset => 1)[:skip].should == 1
     end
   end
   
@@ -146,7 +156,7 @@ class FinderOptionsTest < Test::Unit::TestCase
       FinderOptions.to_mongo_options({})[:limit].should == 0
     end
     
-    should "use offset provided" do
+    should "use limit provided" do
       FinderOptions.to_mongo_options(:limit => 2)[:limit].should == 2
     end
     

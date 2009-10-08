@@ -5,14 +5,13 @@ class DocumentTest < Test::Unit::TestCase
   def setup
     @document = Class.new do
       include MongoMapper::Document
-      collection 'users'
+      set_collection_name 'users'
 
       key :first_name, String
       key :last_name, String
       key :age, Integer
       key :date, Date
     end
-
     @document.collection.clear
   end
 
@@ -25,6 +24,17 @@ class DocumentTest < Test::Unit::TestCase
     end
   end
   
+  context "Saving a document with a blank binary value" do
+    setup do
+      @document.key :file, Binary
+    end
+
+    should "not fail" do
+      doc = @document.new(:file => nil)
+      doc.save
+    end
+  end
+
   context "Loading a document from the database with keys that are not defined" do
     setup do
       @id = Mongo::ObjectID.new.to_s
@@ -130,55 +140,6 @@ class DocumentTest < Test::Unit::TestCase
         doc.foo['baz'].should == 'bar'
       end
     end
-
-    context "Saving a document with an embedded document" do
-      setup do
-        @document.class_eval do
-          key :foo, Address
-        end
-      end
-
-      should "embed embedded document" do
-        address = Address.new(:city => 'South Bend', :state => 'IN')
-        doc = @document.new(:foo => address)
-        doc.save
-        doc.foo.city.should == 'South Bend'
-        doc.foo.state.should == 'IN'
-
-        from_db = @document.find(doc.id)
-        from_db.foo.city.should == 'South Bend'
-        from_db.foo.state.should == 'IN'
-      end
-    end
-
-    context "#new_record? for embedded documents" do
-      setup do
-        @document.class_eval do
-          key :foo, Address
-        end
-      end
-
-      should "be a new_record until document is saved" do
-        address = Address.new(:city => 'South Bend', :state => 'IN')
-        doc = @document.new(:foo => address)
-        address.new_record?.should == true
-      end
-      
-      should "not be a new_record after document is saved" do
-        address = Address.new(:city => 'South Bend', :state => 'IN')
-        doc = @document.new(:foo => address)
-        doc.save
-        address.new_record?.should == false
-      end
-      
-      should "not be a new_record when document is read back" do
-        address = Address.new(:city => 'South Bend', :state => 'IN')
-        doc = @document.new(:foo => address)
-        doc.save
-        read_doc = @document.find(doc.id)
-        read_doc.foo.new_record?.should == false
-      end
-    end
     
     context "Creating a single document" do
       setup do
@@ -210,6 +171,7 @@ class DocumentTest < Test::Unit::TestCase
       setup do
         @document = Class.new do
           include MongoMapper::Document
+          set_collection_name 'test'
         end
         @document.collection.clear
       end
@@ -327,6 +289,10 @@ class DocumentTest < Test::Unit::TestCase
         should "work as array" do
           @document.find([@doc1.id, @doc2.id]).should == [@doc1, @doc2]
         end
+        
+        should "return array if array only has one element" do
+          @document.find([@doc1.id]).should == [@doc1]
+        end
       end
 
       context "with :all" do
@@ -368,9 +334,13 @@ class DocumentTest < Test::Unit::TestCase
       context "with #last" do
         should "find last document based on criteria" do
           @document.last(:order => 'age').should == @doc2
-          @document.last(:conditions => {:age => 28}).should == @doc2
+          @document.last(:order => 'age', :conditions => {:age => 28}).should == @doc2
         end
-      end
+        
+        should "raise error if no order provided" do
+          lambda { @document.last() }.should raise_error
+        end
+      end      
 
       context "with :find_by" do
         should "find document based on argument" do
@@ -404,11 +374,6 @@ class DocumentTest < Test::Unit::TestCase
           docs.should include(@doc3)
         end
 
-        should "find last document based on arguments" do
-          doc = @document.find_last_by_last_name('Nunemaker', :order => 'age')
-          doc.should == @doc1
-        end
-
         should "initialize document with given arguments" do
           doc = @document.find_or_initialize_by_first_name_and_last_name('David', 'Cuadrado')
           doc.should be_new
@@ -426,8 +391,10 @@ class DocumentTest < Test::Unit::TestCase
           doc.first_name.should == 'David'
         end
 
-        should "raise error if document is not found" do
-          lambda {@document.find_by_first_name_and_last_name!(1,2)}.should raise_error(MongoMapper::DocumentNotFound)
+        should "raise error if document is not found when using !" do
+          lambda {
+            @document.find_by_first_name_and_last_name!(1,2)
+          }.should raise_error(MongoMapper::DocumentNotFound)
         end
       end
     end # finding documents
@@ -574,13 +541,13 @@ class DocumentTest < Test::Unit::TestCase
         class ::Property
           include MongoMapper::Document
         end
-        Property.delete_all
+        Property.collection.clear
 
         class ::Thing
           include MongoMapper::Document
           key :name, String
         end
-        Thing.delete_all
+        Thing.collection.clear
       end
 
       teardown do
@@ -704,8 +671,9 @@ class DocumentTest < Test::Unit::TestCase
       should "return 0 if the collection does not exist" do
         klass = Class.new do
           include MongoMapper::Document
-          collection 'foobarbazwickdoesnotexist'
+          set_collection_name 'foobarbazwickdoesnotexist'
         end
+        @document.collection.clear
 
         klass.count.should == 0
       end
@@ -804,30 +772,11 @@ class DocumentTest < Test::Unit::TestCase
       from_db.name.should == "David"
     end
     
-    context "Saving documents with Date key set" do
-      setup do
-        @doc = @document.new(:first_name => 'John', :age => '27', :date => "12/01/2009")
-      end
-    
-      should "save the Date value as a Time object" do
-        @doc.save
-        @doc.date.should == Date.new(2009, 12, 1)
-      end
-    end
-
-    context "Saving an embedded document with Date key set" do
-      setup do
-        Pet.class_eval do
-          key :date_of_birth, Date
-        end
-        @doc = RealPerson.new
-      end
-
-      should "save the Date value as a Time object" do
-        @doc.pets = [Pet.new(:date_of_birth => "12/01/2009")]
-        @doc.save
-        doc = RealPerson.find @doc.id
-        doc.pets.last.date_of_birth.should == Date.new(2009, 12, 1)
+    context "with key of type date" do
+      should "save the date value as a Time object" do
+        doc = @document.new(:first_name => 'John', :age => '27', :date => "12/01/2009")
+        doc.save
+        doc.date.should == Date.new(2009, 12, 1)
       end
     end
   end
@@ -855,7 +804,7 @@ class DocumentTest < Test::Unit::TestCase
       from_db.age.should == 30
     end
 
-    should "allow to update custom attributes" do
+    should "allow updating custom attributes" do
       @doc = @document.new(:first_name => 'David', :age => '26', :gender => 'male')
       @doc.gender = 'Male'
       @doc.save
@@ -891,7 +840,7 @@ class DocumentTest < Test::Unit::TestCase
       from_db.age.should == 30
     end
 
-    should "allow to update custom attributes" do
+    should "allow updating custom attributes" do
       @doc.update_attributes(:gender => 'mALe')
       from_db = @document.find(@doc.id)
       from_db.gender.should == 'mALe'
@@ -989,6 +938,7 @@ class DocumentTest < Test::Unit::TestCase
       old_created_at = doc.created_at
       old_updated_at = doc.updated_at
       doc.first_name = 'Johnny'
+      sleep 1 # this annoys me
       doc.save
       doc.created_at.should == old_created_at
       doc.updated_at.should_not == old_updated_at

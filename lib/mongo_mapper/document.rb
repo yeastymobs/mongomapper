@@ -12,8 +12,13 @@ module MongoMapper
         include RailsCompatibility::Document
         extend Validations::Macros
         extend ClassMethods
+        extend Finders
+        
+        def self.per_page
+          25
+        end unless respond_to?(:per_page)
       end
-
+      
       descendants << model
     end
 
@@ -24,34 +29,49 @@ module MongoMapper
     module ClassMethods
       def find(*args)
         options = args.extract_options!
-
         case args.first
-          when :first then find_first(options)
-          when :last  then find_last(options)
+          when :first then first(options)
+          when :last  then last(options)
           when :all   then find_every(options)
-          else             find_from_ids(args, options)
+          when Array  then find_some(args, options)
+          else
+            case args.size
+              when 0
+                raise DocumentNotFound, "Couldn't find without an ID"
+              when 1
+                find_one(args[0], options)
+              else
+                find_some(args, options)
+            end
         end
       end
 
       def paginate(options)
-        per_page      = options.delete(:per_page)
+        per_page      = options.delete(:per_page) ||  self.per_page
         page          = options.delete(:page)
         total_entries = count(options[:conditions] || {})
         collection    = Pagination::PaginationProxy.new(total_entries, page, per_page)
 
-        options[:limit]   = collection.limit
-        options[:offset]  = collection.offset
+        options[:limit] = collection.limit
+        options[:skip]  = collection.skip
 
         collection.subject = find_every(options)
         collection
       end
 
       def first(options={})
-        find_first(options)
+        options.merge!(:limit => 1)
+        find_every(options)[0]
       end
 
       def last(options={})
-        find_last(options)
+        if options[:order].blank?
+          raise ':order option must be provided when using last'
+        end
+        
+        options.merge!(:limit => 1)
+        options[:order] = invert_order_clause(options[:order])
+        find_every(options)[0]
       end
 
       def all(options={})
@@ -132,14 +152,21 @@ module MongoMapper
         end
         @database
       end
+      
+      # Changes the collection name from the default to whatever you want
+      def set_collection_name(name=nil)
+        @collection = nil
+        @collection_name = name
+      end
+      
+      # Returns the collection name, if not set, defaults to class name tableized
+      def collection_name
+        @collection_name ||= self.to_s.demodulize.tableize
+      end
 
-      def collection(name=nil)
-        if name.nil?
-          @collection ||= database.collection(self.to_s.demodulize.tableize)
-        else
-          @collection = database.collection(name)
-        end
-        @collection
+      # Returns the mongo ruby driver collection object
+      def collection
+        @collection ||= database.collection(collection_name)
       end
       
       def timestamps!
@@ -155,14 +182,11 @@ module MongoMapper
       
       protected
         def method_missing(method, *args)
-          finder = DynamicFinder.new(self, method)
+          finder = DynamicFinder.new(method)
           
-          if finder.valid?
-            meta_def(finder.options[:method]) do |*args|
-              find_with_args(args, finder.options)
-            end
-            
-            send(finder.options[:method], *args)
+          if finder.found?
+            meta_def(finder.method) { |*args| dynamic_find(finder, args) }
+            send(finder.method, *args)
           else
             super
           end
@@ -184,21 +208,8 @@ module MongoMapper
           end
         end
 
-        def find_first(options)
-          options.merge!(:limit => 1)
-          find_every({:order => '$natural asc'}.merge(options))[0]
-        end
-
-        def find_last(options)
-          options.merge!(:limit => 1)
-          options[:order] = invert_order_clause(options)
-          find_every(options)[0]
-          #find_every({:order => '$natural desc'}.merge(invert_order_clause(options)))[0]
-        end
-
-        def invert_order_clause(options)
-          return '$natural desc' unless options[:order]
-          options[:order].split(',').map do |order_segment| 
+        def invert_order_clause(order)
+          order.split(',').map do |order_segment| 
             if order_segment =~ /\sasc/i
               order_segment.sub /\sasc/i, ' desc'
             elsif order_segment =~ /\sdesc/i
@@ -210,7 +221,9 @@ module MongoMapper
         end
 
         def find_some(ids, options={})
+          ids = ids.flatten.compact.uniq
           documents = find_every(options.deep_merge(:conditions => {'_id' => ids}))
+          
           if ids.size == documents.size
             documents
           else
@@ -223,42 +236,6 @@ module MongoMapper
             doc
           else
             raise DocumentNotFound, "Document with id of #{id} does not exist in collection named #{collection.name}"
-          end
-        end
-
-        def find_from_ids(ids, options={})
-          ids = ids.flatten.compact.uniq
-
-          case ids.size
-            when 0
-              raise(DocumentNotFound, "Couldn't find without an ID")
-            when 1
-              find_one(ids[0], options)
-            else
-              find_some(ids, options)
-          end
-        end
-        
-        def find_with_args(args, options)
-          attributes,  = {}
-          find_options = args.extract_options!.deep_merge(:conditions => attributes)
-          
-          options[:attribute_names].each_with_index do |attr, index|
-            attributes[attr] = args[index]
-          end
-
-          result = find(options[:finder], find_options)
-          
-          if result.nil?
-            if options[:bang]
-              raise DocumentNotFound, "Couldn't find Document with #{attributes.inspect} in collection named #{collection.name}"
-            end
-            
-            if options[:instantiator]
-              self.send(options[:instantiator], attributes)
-            end
-          else
-            result
           end
         end
 
@@ -300,11 +277,6 @@ module MongoMapper
         create_or_update || raise(DocumentNotValid.new(self))
       end
 
-      def update_attributes(attrs={})
-        self.attributes = attrs
-        save
-      end
-
       def destroy
         return false if frozen?
 
@@ -334,10 +306,9 @@ module MongoMapper
         save_to_collection
       end
 
-      # collection.save returns mongoid
       def save_to_collection
         clear_custom_id_flag
-        collection.save(mongodb_attributes)
+        collection.save(to_mongo)
       end
 
       def update_timestamps

@@ -6,6 +6,7 @@ class DocumentTest < Test::Unit::TestCase
     setup do
       @document = Class.new do
         include MongoMapper::Document
+        set_collection_name 'test'
       end
     end
 
@@ -34,6 +35,7 @@ class DocumentTest < Test::Unit::TestCase
 
       another_document = Class.new do
         include MongoMapper::Document
+        set_collection_name 'test'
       end
       another_document.database.should == MongoMapper.database
     end
@@ -48,26 +50,26 @@ class DocumentTest < Test::Unit::TestCase
     end
 
     should "allow setting the collection name" do
-      @document.collection('foobar')
+      @document.set_collection_name('foobar')
       @document.collection.should be_instance_of(Mongo::Collection)
       @document.collection.name.should == 'foobar'
     end
   end # Document class
   
   context "Documents that inherit from other documents" do
-    should "default collection to inherited class" do
-      Message.collection.name.should == 'messages'
-      Enter.collection.name.should   == 'messages'
-      Exit.collection.name.should    == 'messages'
-      Chat.collection.name.should    == 'messages'
+    should "default collection name to inherited class" do
+      Message.collection_name.should == 'messages'
+      Enter.collection_name.should   == 'messages'
+      Exit.collection_name.should    == 'messages'
+      Chat.collection_name.should    == 'messages'
     end
     
     should "default associations to inherited class" do
-      Message.associations.keys.should include("room") 
-      Enter.associations.keys.should   include("room") 
-      Exit.associations.keys.should    include("room") 
-      Chat.associations.keys.should    include("room") 
-    end
+     Message.associations.keys.should include("room")
+     Enter.associations.keys.should   include("room")
+     Exit.associations.keys.should    include("room")
+     Chat.associations.keys.should    include("room")
+   end
     
     should "track subclasses" do
       Message.subclasses.should == [Enter, Exit, Chat]
@@ -90,6 +92,7 @@ class DocumentTest < Test::Unit::TestCase
     setup do
       @document = Class.new do
         include MongoMapper::Document
+        set_collection_name 'test'
 
         key :name, String
         key :age, Integer
@@ -109,18 +112,18 @@ class DocumentTest < Test::Unit::TestCase
       @document.new(:active => false).active.should be_false
     end
 
-    context "parent document" do
-      should "have a nil _parent_document" do
-        @document.new._parent_document.should be_nil
+    context "root document" do
+      should "have a nil _root_document" do
+        @document.new._root_document.should be_nil
       end
 
-      should "set self to the parent document on embedded documents" do
+      should "set self to the root document on embedded documents" do
         document = Class.new(RealPerson) do
           many :pets
         end
 
         doc = document.new 'pets' => [{}]
-        doc.pets.first._parent_document.should == doc
+        doc.pets.first._root_document.should == doc
       end
     end
 
@@ -135,6 +138,22 @@ class DocumentTest < Test::Unit::TestCase
         doc.new?.should be_true
       end
     end
+
+    context "clone" do
+      should "not set the id" do
+        doc = @document.create(:name => "foo", :age => 27)
+        clone = doc.clone
+        clone.should be_new
+      end
+
+      should "copy the attributes" do
+        doc = @document.create(:name => "foo", :age => 27)
+        clone = doc.clone
+        clone.name.should == "foo"
+        clone.age.should == 27
+      end
+    end
+
     
     context "equality" do
       should "be equal if id and class are the same" do
@@ -148,6 +167,7 @@ class DocumentTest < Test::Unit::TestCase
       should "not be equal if id same but class different" do
         @another_document = Class.new do
           include MongoMapper::Document
+          set_collection_name 'test'
         end
 
         (@document.new('_id' => 1) == @another_document.new('_id' => 1)).should be(false)

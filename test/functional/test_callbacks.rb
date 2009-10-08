@@ -5,6 +5,7 @@ class CallbacksTest < Test::Unit::TestCase
     setup do
       @document = Class.new do
         include MongoMapper::Document
+        set_collection_name 'test'
         
         key :name, String
         
@@ -29,8 +30,7 @@ class CallbacksTest < Test::Unit::TestCase
           @history = nil
         end
       end
-      
-      clear_all_collections
+      @document.collection.clear
     end
     
     should "get the order right for creating documents" do

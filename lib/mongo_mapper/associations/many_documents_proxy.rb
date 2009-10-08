@@ -2,7 +2,10 @@ module MongoMapper
   module Associations
     class ManyDocumentsProxy < Proxy
       delegate :klass, :to => :@association
-
+      delegate :collection, :to => :klass
+      
+      include MongoMapper::Finders
+      
       def find(*args)
         options = args.extract_options!
         klass.find(*args << scoped_options(options))
@@ -71,7 +74,17 @@ module MongoMapper
         end
         reset
       end
-
+      
+      def method_missing(method, *args)
+        finder = DynamicFinder.new(method)
+        
+        if finder.found?
+          dynamic_find(finder, args)
+        else
+          super
+        end
+      end
+      
       protected
         def scoped_conditions
           {self.foreign_key => @owner.id}

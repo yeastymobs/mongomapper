@@ -5,6 +5,7 @@ module MongoMapper
     def self.to_mongo_criteria(conditions, parent_key=nil)
       criteria = {}
       conditions.each_pair do |field, value|
+        field = field_normalized(field)
         case value
           when Array
             operator_present = field.to_s =~ /^\$/            
@@ -31,10 +32,18 @@ module MongoMapper
       options = options.dup
       {
         :fields => to_mongo_fields(options.delete(:fields) || options.delete(:select)),
-        :offset => (options.delete(:offset) || 0).to_i,
+        :skip   => (options.delete(:skip) || options.delete(:offset) || 0).to_i,
         :limit  => (options.delete(:limit) || 0).to_i,
         :sort   => options.delete(:sort) || to_mongo_sort(options.delete(:order))
       }
+    end
+    
+    def self.field_normalized(field)
+      if field.to_s == 'id'
+        :_id
+      else
+        field
+      end
     end
     
     def initialize(options)
